@@ -1,0 +1,154 @@
+# Google Colab platform configuration
+# Optimized for Colab execution as of October 2025
+# NOTE: Environment specs should be verified when deploying
+
+# Inherit from base config
+base_config: "base.yaml"
+
+platform:
+  name: "colab"
+  description: "Google Colab cloud execution"
+
+# Colab environment specifications (as of Oct 2025)
+# TODO: Verify these values when deploying to actual Colab
+environment:
+  python_version: "3.10"  # Verify current Colab Python version
+  cuda_version: "12.2"    # Verify current CUDA version
+  cudnn_version: "8.9"    # Verify current cuDNN version
+
+  # Available GPU types in Colab
+  gpu_types:
+    - T4         # Free tier (15GB VRAM)
+    - V100       # Pro tier (16GB VRAM)
+    - A100       # Pro+ tier (40GB VRAM)
+
+  # Expected memory
+  ram_gb: 12.7   # Free tier typical
+  gpu_ram_gb: 15 # T4 typical
+
+# Hardware configuration for Colab
+hardware:
+  auto_detect: true
+
+  gpu:
+    device: "cuda"
+
+    # CUDA optimizations for Colab
+    cuda:
+      deterministic: false  # Allow non-deterministic for speed
+      benchmark: true       # Enable cuDNN autotuner
+      allow_tf32: true      # Enable TF32 on Ampere GPUs (A100)
+
+  cpu:
+    # Colab has limited CPU cores (usually 2)
+    num_threads: 2
+    use_mkl: true
+
+# Training configuration optimized for Colab
+training:
+  # Larger batch sizes for GPU memory
+  batch_size: 256  # Adjust based on GPU memory
+
+  # Limited workers to avoid Colab timeouts
+  num_workers: 2
+  pin_memory: true
+  persistent_workers: false  # Don't persist to avoid session issues
+
+  # Mixed precision for faster training
+  use_amp: true  # FP16 mixed precision
+
+  # More frequent validation to avoid losing progress
+  validate_every: 1
+  log_every: 5  # More frequent logging for monitoring
+
+  # Checkpointing to handle disconnections
+  save_checkpoints: true
+  checkpoint_every: 5  # Every 5 epochs
+
+# Model-specific optimizations for Colab
+models:
+  xgboost:
+    n_jobs: 2  # Colab has limited CPU cores
+    tree_method: "gpu_hist"  # Use GPU acceleration
+    predictor: "gpu_predictor"
+    max_bin: 256  # Reduce memory usage
+
+  random_forest:
+    n_jobs: 2
+
+  pytorch:
+    device: "cuda"
+    use_amp: true
+    gradient_clip: 1.0
+    pin_memory: true
+
+    # Memory optimization
+    empty_cache_every: 10  # Clear GPU cache every 10 batches
+
+  tensorflow:
+    device: "GPU:0"
+    mixed_precision: true
+    xla_optimization: true
+
+    # TensorFlow GPU memory growth
+    gpu_memory_growth: true
+    gpu_memory_limit: 14000  # MB, leave some for system
+
+# Resource limits for Colab
+resources:
+  # Colab has execution time limits
+  max_runtime_hours: 12  # Free tier limit
+  timeout_minutes: 30    # Max per model to avoid hitting limit
+
+  # Memory limits
+  max_memory_gb: 12
+  max_gpu_memory_gb: 14
+
+# Colab-specific paths
+paths:
+  # Mount Google Drive for persistent storage (optional)
+  mount_drive: false
+  drive_path: "/content/drive/MyDrive/nasa-exoplanet"
+
+  # Local paths in Colab session
+  data_dir: "/content/data"
+  artifacts_dir: "/content/artifacts"
+  results_dir: "/content/results"
+  cache_dir: "/content/.cache"
+
+# Package installation (dependencies not in Colab by default)
+packages:
+  install_on_startup: true
+  requirements:
+    - "xgboost>=2.0.0"
+    - "optuna>=3.0.0"
+    - "scikit-learn>=1.3.0"
+    - "torch>=2.1.0"
+    - "tensorflow>=2.14.0"
+    - "celerite2>=0.3.0"
+    - "transitleastsquares>=1.0.0"
+    - "tsfresh>=0.20.0"
+    - "pywavelets>=1.4.0"
+
+  # Install with fixed versions to avoid breaking changes
+  use_fixed_versions: true
+
+# Colab session management
+session:
+  # Auto-save outputs before session timeout
+  auto_save: true
+  save_interval_minutes: 10
+
+  # Keep session alive (via periodic activity)
+  keep_alive: true
+
+  # Download results to local machine before session ends
+  auto_download: true
+
+# Debugging and monitoring
+debug:
+  enabled: false
+  profile_performance: true  # Monitor GPU utilization
+  save_intermediate: true    # Save intermediate results
+  monitor_gpu: true
+  monitor_interval_seconds: 60

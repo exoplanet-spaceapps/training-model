@@ -1,0 +1,240 @@
+# Local platform configuration
+# Optimized for desktop/laptop execution with auto CPU/GPU detection
+
+# Inherit from base config
+base_config: "base.yaml"
+
+platform:
+  name: "local"
+  description: "Local desktop/laptop execution"
+
+# Hardware configuration with auto-detection
+hardware:
+  auto_detect: true
+
+  cpu:
+    # Intel MKL optimizations
+    use_mkl: true
+    mkl_num_threads: auto  # Auto-detect physical cores
+    mkl_dynamic: false
+    mkl_instructions: "AVX512"  # or AVX2, SSE4.2
+
+    # OpenMP settings
+    openmp_num_threads: auto
+    openmp_proc_bind: true
+    openmp_places: "cores"
+
+    # NumPy/SciPy BLAS settings
+    openblas_num_threads: auto
+
+  gpu:
+    # Auto-detect available GPU (CUDA, MPS, or None)
+    auto_detect: true
+    device: "auto"  # auto-select: cuda > mps > cpu
+
+    # CUDA settings (if NVIDIA GPU available)
+    cuda:
+      deterministic: true
+      benchmark: false
+      allow_tf32: false
+
+    # Apple Silicon MPS settings (if Mac M1/M2)
+    mps:
+      enabled: true
+      fallback_to_cpu: true
+
+# Training configuration for local execution
+training:
+  # Batch size auto-adjusted based on available memory
+  batch_size: auto  # Will detect optimal size
+  num_workers: auto  # Will match CPU cores
+  pin_memory: true
+  persistent_workers: true
+
+  # Use mixed precision only if GPU available
+  use_amp: auto  # Auto-enable for GPU, disable for CPU
+
+  # Validation settings
+  validate_every: 1  # Validate every epoch
+  log_every: 10      # Log every 10 batches
+
+# Model-specific optimizations for local
+models:
+  random_state: 42
+
+  # XGBoost - CPU/GPU optimized
+  xgboost:
+    # Parallelization
+    n_jobs: -1
+    tree_method: "auto"  # Will auto-select: gpu_hist > hist
+    predictor: "auto"    # Will auto-select: gpu_predictor > cpu_predictor
+
+    # Core parameters (from base.yaml)
+    max_depth: 6
+    learning_rate: 0.1
+    n_estimators: 100
+    objective: "binary:logistic"
+    eval_metric: "logloss"
+    use_label_encoder: false
+    random_state: 42
+    early_stopping_rounds: 10
+
+    # Performance optimizations
+    subsample: 0.8
+    colsample_bytree: 0.8
+    max_bin: 256  # Good balance for speed vs accuracy
+
+  # Random Forest - Multi-core CPU optimized
+  random_forest:
+    n_estimators: 100
+    max_depth: null
+    min_samples_split: 2
+    min_samples_leaf: 1
+    n_jobs: -1  # Use all CPU cores
+    max_features: "sqrt"  # Memory optimization
+    random_state: 42
+
+  # MLP - CPU optimized (LBFGS solver)
+  mlp:
+    hidden_layer_sizes: [512, 256, 128, 64]
+    activation: "relu"
+    solver: "lbfgs"  # Best for CPU, small datasets
+    alpha: 0.001
+    learning_rate: "adaptive"
+    learning_rate_init: 0.001
+    max_iter: 500
+    early_stopping: true
+    validation_fraction: 0.1
+    n_iter_no_change: 20
+    random_state: 42
+
+  # Logistic Regression - Fast baseline
+  logistic_regression:
+    C: 1.0
+    solver: "lbfgs"
+    max_iter: 1000
+    n_jobs: -1  # Use all CPU cores
+    random_state: 42
+
+  # SVM - Memory optimized
+  svm:
+    C: 1.0
+    kernel: "rbf"
+    gamma: "scale"
+    probability: true
+    cache_size: 1000  # 1GB cache for kernel computations
+    random_state: 42
+
+  # PyTorch models - Auto GPU/CPU
+  pytorch:
+    device: "auto"
+    epochs: 100
+    batch_size: 32  # Conservative for local
+    lr: 0.001
+    weight_decay: 0.0001
+    use_amp: auto  # Mixed precision if GPU supports
+    gradient_clip: 1.0
+    num_workers: auto
+    pin_memory: true
+
+  # TensorFlow models
+  tensorflow:
+    device: "auto"
+    epochs: 100
+    batch_size: 32
+    lr: 0.001
+    mixed_precision: auto
+    xla_optimization: true
+    validation_split: 0.0  # We use separate val set
+
+# Resource limits for local execution
+resources:
+  max_memory_gb: auto  # Auto-detect available RAM
+  max_cpu_percent: 80  # Don't use 100% to keep system responsive
+  timeout_minutes: 120  # 2 hours max per model
+
+# Paths for local execution
+paths:
+  data_dir: "data"
+  artifacts_dir: "artifacts"
+  results_dir: "results"
+  logs_dir: "logs"
+  cache_dir: ".cache"
+
+# Output configuration (local-specific)
+output:
+  artifacts_dir: "artifacts"
+  results_dir: "results"
+
+  # Required outputs (per specification)
+  save_confusion_matrix: true  # PNG + CSV
+  save_metrics: true            # metrics.json
+  save_model: true              # Best model weights
+
+  # Additional local outputs for debugging
+  save_predictions: true
+  save_feature_importance: true
+  save_training_history: true
+
+  # Confusion matrix format
+  confusion_matrix:
+    save_png: true
+    save_csv: true
+    figsize: [8, 6]
+    cmap: "Blues"
+    normalize: false
+
+  # Metrics to save
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc
+
+# Logging configuration (more detailed for local debugging)
+logging:
+  level: "INFO"  # Use DEBUG for detailed debugging
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  save_to_file: true
+  log_dir: "logs"
+
+  # Console output
+  console:
+    enabled: true
+    level: "INFO"
+    colored: true  # Colored output for better readability
+
+  # File output
+  file:
+    enabled: true
+    level: "DEBUG"
+    rotation: "10 MB"  # Rotate when file reaches 10MB
+    retention: 5  # Keep last 5 log files
+
+# Experiment tracking (optional, for local use)
+experiment:
+  # MLflow tracking
+  mlflow:
+    enabled: false  # Enable if MLflow server is running
+    tracking_uri: "http://localhost:5000"
+    experiment_name: "nasa-exoplanet-local"
+
+  # Weights & Biases
+  wandb:
+    enabled: false  # Enable if using W&B
+    project: "nasa-exoplanet"
+    entity: null  # Set to your W&B username
+
+# Debugging options
+debug:
+  enabled: false
+  profile_performance: false  # Enable to profile CPU/GPU bottlenecks
+  save_intermediate: false
+  verbose_errors: true  # Show full stack traces
+
+# Reproducibility
+reproducibility:
+  seed: 42
+  deterministic: true  # May be slower but ensures reproducibility
+  cuda_deterministic: true  # For GPU reproducibility

@@ -1,0 +1,139 @@
+# Base configuration for NASA Exoplanet ML Training
+# This file contains settings shared across all platforms
+# Platform-specific configs (local.yaml, colab.yaml) override these values
+
+project:
+  name: "NASA Exoplanet ML"
+  version: "2.0.0"
+  description: "Unified ML pipeline for exoplanet detection"
+
+# Data configuration
+data:
+  csv_path: "balanced_features.csv"
+  target_col: "label"
+
+  # Fixed data split (MUST NOT be changed - per specification)
+  train_size: 600
+  val_size: 200
+  test_size: 200
+  total_size: 1000
+
+  # Splitting strategy
+  random_state: 42
+  stratify: true
+
+  # Feature columns (auto-detected, excludes these)
+  exclude_cols:
+    - sample_id
+    - tic_id
+    - label
+    - status
+    - error
+
+# Output configuration
+output:
+  artifacts_dir: "artifacts"
+  results_dir: "results"
+
+  # Required outputs (per specification)
+  save_confusion_matrix: true  # PNG + CSV
+  save_metrics: true            # metrics.json
+  save_model: true              # Best model weights
+
+  # Confusion matrix format
+  confusion_matrix:
+    save_png: true
+    save_csv: true
+    figsize: [8, 6]
+    cmap: "Blues"
+    normalize: false
+
+  # Metrics to save
+  metrics:
+    - accuracy
+    - precision
+    - recall
+    - f1
+    - roc_auc
+
+# Model training configuration
+training:
+  verbose: 1
+  early_stopping:
+    enabled: true
+    patience: 10
+    monitor: "val_loss"
+    mode: "min"
+
+# Models configuration
+models:
+  random_state: 42
+
+  xgboost:
+    max_depth: 6
+    learning_rate: 0.1
+    n_estimators: 100
+    objective: "binary:logistic"
+    eval_metric: "logloss"
+    use_label_encoder: false
+    tree_method: "hist"
+    random_state: 42
+    early_stopping_rounds: 10
+
+  random_forest:
+    n_estimators: 100
+    max_depth: null
+    min_samples_split: 2
+    min_samples_leaf: 1
+
+  mlp:
+    hidden_layer_sizes: [512, 256, 128, 64]
+    activation: relu
+    solver: lbfgs
+    alpha: 0.001
+    learning_rate: adaptive
+    learning_rate_init: 0.001
+    max_iter: 500
+    early_stopping: true
+    validation_fraction: 0.1
+    n_iter_no_change: 20
+
+  logistic_regression:
+    C: 1.0
+    solver: lbfgs
+    max_iter: 1000
+    random_state: 42
+
+  svm:
+    C: 1.0
+    kernel: rbf
+    gamma: scale
+    probability: true
+    random_state: 42
+
+  cnn1d:
+    n_channels: 32
+    dropout: 0.3
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    batch_size: 32
+    max_epochs: 100
+    patience: 10
+    device: 'auto'
+
+  pytorch:
+    epochs: 100
+    lr: 0.001
+    weight_decay: 0.0001
+
+  tensorflow:
+    epochs: 100
+    lr: 0.001
+    validation_split: 0.0  # We use separate val set
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  save_to_file: true
+  log_dir: "logs"
